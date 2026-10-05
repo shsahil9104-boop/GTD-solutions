@@ -1,0 +1,37 @@
+# Render "Blueprint": New + > Blueprint > pick your repo. Persistent disks need a paid instance type.
+services:
+  - type: web
+    name: gtd-travel
+    runtime: docker
+    plan: starter
+    disk:
+      name: gtd-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: GTD_DB
+        value: /data/gtd.db
+      - key: GTD_ADMIN_USER
+        value: admin
+      - key: GTD_ADMIN_PASSWORD
+        sync: false          # you type this in the Render dashboard
+      - key: GTD_ADMIN_EMAIL
+        sync: false          # company email that receives booking mails
+      - key: GTD_SMTP_HOST
+        value: smtp.gmail.com
+      - key: GTD_SMTP_PORT
+        value: "587"
+      - key: GTD_SMTP_USER
+        sync: false
+      - key: GTD_SMTP_PASSWORD
+        sync: false
+      - key: GTD_SMTP_FROM
+        sync: false
+      - key: GTD_TWILIO_SID
+        sync: false
+      - key: GTD_TWILIO_TOKEN
+        sync: false
+      - key: GTD_TWILIO_FROM
+        sync: false
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false

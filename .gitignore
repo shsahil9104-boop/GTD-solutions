@@ -1,0 +1,32 @@
+# Local virtual environment
+venv/
+env/
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Local database and backups (contains live booking/customer data)
+gtd.db
+gtd.db-*
+*.sqlite
+*.sqlite3
+backups/
+
+# Streamlit secrets (API keys, tokens) - never commit
+.streamlit/secrets.toml
+secrets.toml
+.env
+.env.*
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

@@ -1,0 +1,8 @@
+gtd.db
+gtd.db-*
+backups/
+__pycache__/
+*.pyc
+venv/
+.git/
+.streamlit/secrets.toml
