@@ -6,7 +6,7 @@ import threading
 import auth
 import db
 
-ADMIN_EMAIL = os.environ.get("shsahil9894@gmail.com", "bj175424@gmail.com")
+ADMIN_EMAIL = os.environ.get("GTD_ADMIN_EMAIL", "bj175424@gmail.com")
 
 SQL = """SELECT b.*, c.name AS city, pa.name AS pickup_area, da.name AS drop_area, ct.name AS cab_type,
   u.full_name, u.username, u.phone, u.email
