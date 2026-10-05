@@ -14,7 +14,7 @@ header[data-testid="stHeader"]{background:transparent}
 .block-container{padding-top:2rem;max-width:1180px}
 h1,h2,h3{color:var(--pine);letter-spacing:-.02em;font-weight:800!important}
 h2{font-size:1.9rem!important} h3{font-size:1.25rem!important}
-
+[data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"]{display:none!important}
 /* sidebar */
 [data-testid="stSidebar"]{background:linear-gradient(180deg,#0f3b36 0%,#0b2a27 100%)}
 [data-testid="stSidebar"] *{color:#e8f1ef}
