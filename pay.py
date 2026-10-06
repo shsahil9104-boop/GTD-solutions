@@ -24,12 +24,31 @@ _TABLE_READY = False
 _last_sync = {}
 
 
+def _setting(name):
+    """Reads a setting from the environment or from Streamlit secrets (also if it was pasted under a [section])."""
+    val = os.environ.get(name)
+    if val:
+        return val.strip()
+    try:
+        import streamlit as st
+        sec = st.secrets
+        if name in sec:
+            return str(sec[name]).strip()
+        for k in sec:
+            sub = sec[k]
+            if hasattr(sub, "get") and sub.get(name):
+                return str(sub[name]).strip()
+    except Exception:
+        pass
+    return ""
+
+
 def is_configured():
-    return bool(os.environ.get("GTD_RAZORPAY_KEY_ID") and os.environ.get("GTD_RAZORPAY_KEY_SECRET"))
+    return bool(_setting("GTD_RAZORPAY_KEY_ID") and _setting("GTD_RAZORPAY_KEY_SECRET"))
 
 
 def is_test_mode():
-    return os.environ.get("GTD_RAZORPAY_KEY_ID", "").startswith("rzp_test_")
+    return _setting("GTD_RAZORPAY_KEY_ID").startswith("rzp_test_")
 
 
 def _ensure_table():
@@ -46,7 +65,7 @@ def _ensure_table():
 
 def _call(method, path, payload=None):
     """Calls the Razorpay API. Raises RuntimeError with a readable message on failure."""
-    key, secret = os.environ["GTD_RAZORPAY_KEY_ID"], os.environ["GTD_RAZORPAY_KEY_SECRET"]
+    key, secret = _setting("GTD_RAZORPAY_KEY_ID"), _setting("GTD_RAZORPAY_KEY_SECRET")
     data = json.dumps(payload).encode() if payload is not None else None
     req = urllib.request.Request(API + path, data=data, method=method)
     req.add_header("Authorization", "Basic " + base64.b64encode(f"{key}:{secret}".encode()).decode())

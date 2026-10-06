@@ -2,13 +2,17 @@ import pandas as pd
 import streamlit as st
 
 import db
+import gmaps
 import pay
 import ui
 
 
 def _pay_section(b):
     """Pay-online controls for one booking (shown inside its expander)."""
-    if b["status"] == "cancelled" or b["fare_total"] is None or b["due"] <= 0 or not pay.is_configured():
+    if b["status"] == "cancelled" or b["fare_total"] is None or b["due"] <= 0:
+        return
+    if not pay.is_configured():
+        st.caption("Online payment is not available yet. Please pay your driver or contact GTD.")
         return
     st.markdown(f"**Amount due: {ui.money(b['due'])}**")
     if pay.is_test_mode():
@@ -33,6 +37,18 @@ def _pay_section(b):
                 st.rerun()
             else:
                 st.info("We haven't received the payment yet. If you just paid, wait a few seconds and try again.")
+
+
+def _place(b, which):
+    """Address text for the map: street address plus area, city and country."""
+    name, addr = (b["pickup_area"], b["pickup_address"]) if which == "pickup" else (b["drop_area"], b["drop_address"])
+    parts, seen = [], set()
+    for p in (addr, (name or "").replace(" / ", " "), b["city"], "India"):
+        p = (p or "").strip()
+        if p and p.lower() not in seen:
+            seen.add(p.lower())
+            parts.append(p)
+    return ", ".join(parts) if (addr or name) else ""
 
 
 def book():
@@ -61,6 +77,12 @@ def my_bookings():
         with st.expander(f"{b['ref']}: {b['route']} ({ui.STATUS_LABELS[b['status']]})"):
             ui.booking_detail(b)
             _pay_section(b)
+            if b["status"] != "cancelled" and st.toggle("Show route and my live location", key=f"map{b['id']}"):
+                dest = _place(b, "drop")
+                if dest:
+                    gmaps.booking_map(_place(b, "pickup"), dest)
+                else:
+                    st.info("Add a drop location to this booking to see the route.")
             if b["status"] in ("pending", "confirmed"):
                 if st.button("Cancel this booking", key=f"cx{b['id']}"):
                     db.run("UPDATE bookings SET status='cancelled' WHERE id=?", (b["id"],))
