@@ -9,7 +9,7 @@ import p_customer
 import p_ops
 import p_public
 
-st.set_page_config(page_title="GTD Travel", page_icon="\U0001F696", layout="wide")
+st.set_page_config(page_title="GTD Travel", page_icon="\U0001F696", layout="wide", initial_sidebar_state="expanded")
 theme.inject()
 
 

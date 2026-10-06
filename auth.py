@@ -182,7 +182,34 @@ def create_user(*, username, email, password, role, full_name="", phone="", comp
     return uid, None
 
 
+def _reset_admin_from_env():
+    """Recovery without deleting data: with GTD_ADMIN_RESET=1, the first admin gets the username and
+    password from GTD_ADMIN_USER / GTD_ADMIN_PASSWORD. Remove GTD_ADMIN_RESET once you can log in."""
+    username = (os.environ.get("GTD_ADMIN_USER") or "").strip()
+    password = os.environ.get("GTD_ADMIN_PASSWORD") or ""
+    adm = db.q1("SELECT * FROM users WHERE role='admin' ORDER BY id LIMIT 1")
+    if not adm or not username or not password:
+        return
+    if adm["username"] == username and verify_password(password, adm["password_hash"]):
+        return  # already applied
+    if not re.fullmatch(r"[A-Za-z0-9_.@-]{3,30}", username):
+        print("[admin reset] skipped: username must be 3-30 letters, digits or _ . @ -")
+        return
+    if db.q1("SELECT id FROM users WHERE username = ? COLLATE NOCASE AND id <> ?", (username, adm["id"])):
+        print("[admin reset] skipped: that username is already used by another account")
+        return
+    err = check_new_password(password)
+    if err:
+        print(f"[admin reset] skipped: {err}")
+        return
+    db.run("UPDATE users SET username=?, password_hash=?, must_change_pw=0, active=1 WHERE id=?",
+           (username, hash_password(password), adm["id"]))
+    print("[admin reset] admin username and password updated")
+
+
 def create_default_admin():
+    if os.environ.get("GTD_ADMIN_RESET") == "1":
+        _reset_admin_from_env()
     if db.q1("SELECT id FROM users WHERE role='admin' LIMIT 1"):
         return
     username = os.environ.get("GTD_ADMIN_USER", "admin")
