@@ -6,6 +6,7 @@ import streamlit as st
 
 import auth
 import db
+import pay
 import ui
 from ui import clean, inverse, money
 
@@ -449,6 +450,11 @@ def people():
 def payments():
     st.header("Payments")
     ui.show_flash()
+    if pay.is_configured():
+        if st.button("Check online payments"):
+            n = pay.sync_all()
+            ui.flash(f"{n} new online payment(s) confirmed." if n else "No new online payments.")
+            st.rerun()
     rows = db.q("""SELECT p.*, u.username AS customer FROM payments p JOIN bookings b ON b.id=p.booking_id
                    JOIN users u ON u.id=b.customer_id ORDER BY p.id DESC""")
     paid = sum(r["amount"] for r in rows if r["status"] == "paid")

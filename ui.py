@@ -15,7 +15,7 @@ TRIP_LABELS = {"local": "Local", "outstation": "Outstation", "airport": "Airport
 JOURNEY_LABELS = {"one_way": "One-way", "round_trip": "Round trip"}
 STATUS_LABELS = {"pending": "Pending", "confirmed": "Confirmed", "assigned": "Driver assigned",
                  "ongoing": "On the trip", "completed": "Completed", "cancelled": "Cancelled"}
-METHOD_LABELS = {"cash": "Cash", "upi": "UPI", "card": "Card", "bank": "Bank transfer"}
+METHOD_LABELS = {"cash": "Cash", "upi": "UPI", "card": "Card", "bank": "Bank transfer", "online": "Online (Razorpay)"}
 PAY_STATUS_LABELS = {"pending": "Pending", "paid": "Paid", "refunded": "Refunded"}
 
 
