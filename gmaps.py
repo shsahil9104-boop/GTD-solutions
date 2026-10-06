@@ -199,6 +199,82 @@ window.initMap = initMap;
 </body></html>"""
 
 
+OSM_HTML = """<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#17201e}
+#info{margin:0 0 10px;padding:12px 16px;border-radius:12px;background:#0f3b36;color:#fff;font-size:15px}
+#info b{color:#f2b01e;font-size:18px}
+#map{height:__MAP_HEIGHT__px;border-radius:16px;border:1px solid #e5e1d6}
+#bar{display:flex;gap:10px;align-items:center;margin-top:8px;font-size:13px;color:#555}
+button{border:0;border-radius:10px;padding:8px 14px;background:#f2b01e;color:#17201e;font-weight:600;cursor:pointer}
+.pin{width:26px;height:26px;border-radius:50%;background:#0f3b36;color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.me{width:16px;height:16px;border-radius:50%;background:#1a73e8;border:3px solid #fff;box-shadow:0 0 0 2px #1a73e8}
+</style></head><body>
+<div id="info">Loading route...</div>
+<div id="map"></div>
+<div id="bar"><button id="center" type="button">Show my location</button><span id="me">Finding your live location...</span></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const ORIGIN = __ORIGIN__, DEST = __DEST__;
+const info = document.getElementById("info"), meInfo = document.getElementById("me");
+const map = L.map("map").setView([23.0225, 72.5714], 11);
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 19, attribution: "&copy; OpenStreetMap contributors"}).addTo(map);
+let meMarker = null, lastPos = null;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// try the full address first, then drop the most specific part until something is found
+async function geocode(q) {
+  const parts = q.split(",").map(s => s.trim()).filter(Boolean);
+  for (let i = 0; i <= parts.length - 2; i++) {
+    const text = parts.slice(i).join(", ");
+    const r = await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=in&q=" + encodeURIComponent(text));
+    const j = await r.json();
+    if (j.length) return [parseFloat(j[0].lat), parseFloat(j[0].lon)];
+    await sleep(1100);
+  }
+  throw new Error("Address not found: " + q);
+}
+function pin(label) { return L.divIcon({className: "", html: '<div class="pin">' + label + '</div>', iconSize: [26, 26], iconAnchor: [13, 13]}); }
+
+if (navigator.geolocation) {
+  navigator.geolocation.watchPosition(pos => {
+    lastPos = [pos.coords.latitude, pos.coords.longitude];
+    if (!meMarker) meMarker = L.marker(lastPos, {icon: L.divIcon({className: "", html: '<div class="me"></div>', iconSize: [16, 16], iconAnchor: [8, 8]}), title: "You are here"}).addTo(map);
+    else meMarker.setLatLng(lastPos);
+    meInfo.textContent = "Your live location is the blue dot.";
+  }, () => { meInfo.textContent = "Allow location access in your browser to see yourself on the map."; },
+  {enableHighAccuracy: true, maximumAge: 5000});
+} else {
+  meInfo.textContent = "Your browser can't share its location.";
+}
+document.getElementById("center").addEventListener("click", () => { if (lastPos) map.setView(lastPos, 15); });
+
+(async () => {
+  try {
+    const a = await geocode(ORIGIN);
+    await sleep(1100);
+    const b = await geocode(DEST);
+    L.marker(a, {icon: pin("A"), title: "Pickup"}).addTo(map);
+    L.marker(b, {icon: pin("B"), title: "Drop"}).addTo(map);
+    map.fitBounds([a, b], {padding: [40, 40]});
+    const url = "https://router.project-osrm.org/route/v1/driving/" + a[1] + "," + a[0] + ";" + b[1] + "," + b[0] + "?overview=full&geometries=geojson";
+    const res = await (await fetch(url)).json();
+    if (!res.routes || !res.routes.length) throw new Error("no route");
+    const r = res.routes[0];
+    const line = L.geoJSON(r.geometry, {style: {color: "#0f3b36", weight: 5, opacity: 0.85}}).addTo(map);
+    map.fitBounds(line.getBounds(), {padding: [40, 40]});
+    const km = (r.distance / 1000).toFixed(1), mins = Math.round(r.duration / 60);
+    info.innerHTML = "Distance: <b>" + km + " km</b> &nbsp;|&nbsp; Drive time: <b>" +
+      (mins >= 60 ? Math.floor(mins / 60) + " h " + (mins % 60) + " min" : mins + " min") + "</b>";
+  } catch (e) {
+    info.textContent = "Could not draw the route: " + e.message;
+    console.error(e);
+  }
+})();
+</script></body></html>"""
+
+
 def _js(value):
     return json.dumps(value).replace("</", "<\\/")
 
@@ -206,10 +282,9 @@ def _js(value):
 def booking_map(origin, destination, height=420):
     """Map for one booking: the driving route from `origin` to `destination` (address texts) and the viewer's live location."""
     key = _api_key()
-    if not key:
-        st.info("The map isn't set up yet.")
-        return
-    html = (BOOKING_HTML.replace("__MAP_HEIGHT__", str(int(height)))
+    # With a Google Maps key use Google; without one fall back to the free OpenStreetMap map.
+    template = BOOKING_HTML if key else OSM_HTML
+    html = (template.replace("__MAP_HEIGHT__", str(int(height)))
             .replace("__ORIGIN__", _js(origin)).replace("__DEST__", _js(destination))
-            .replace("__API_KEY__", escape(key)))
+            .replace("__API_KEY__", escape(key or "")))
     components.html(html, height=int(height) + 110)
