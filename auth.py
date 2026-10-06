@@ -57,6 +57,11 @@ def mask_phone(phone):
     return phone[:3] + "\u2022" * max(len(phone) - 6, 0) + phone[-3:] if phone else ""
 
 
+def mask_email(email):
+    name, _, domain = (email or "").partition("@")
+    return (name[:2] + "***@" + domain) if domain else ""
+
+
 def _otp_hash(user_id, code):
     return hashlib.sha256(f"{user_id}:{code}".encode()).hexdigest()
 
@@ -71,10 +76,10 @@ def change_phone(user_id, raw):
 
 
 def send_otp(user_id):
-    """Texts a 6-digit code. Returns (ok, message)."""
+    """Emails a 6-digit code. Returns (ok, message)."""
     u = db.q1("SELECT * FROM users WHERE id=?", (user_id,))
-    if not u or not u["phone"]:
-        return False, "There is no phone number on this account."
+    if not u or not u["email"]:
+        return False, "There is no email address on this account."
     now = db.now()
     last = db.q1("SELECT created_at FROM otp_codes WHERE user_id=? ORDER BY id DESC LIMIT 1", (user_id,))
     if last:
@@ -92,11 +97,13 @@ def send_otp(user_id):
           (now + timedelta(minutes=OTP_TTL_MIN)).strftime("%Y-%m-%d %H:%M:%S"), now.strftime("%Y-%m-%d %H:%M:%S"))),
     ])
     try:
-        sms.send_sms(u["phone"], f"{code} is your GTD Travel verification code. It works for {OTP_TTL_MIN} minutes. Don't share it with anyone.")
+        send_email(u["email"], "Your GTD Travel verification code",
+                   f"Hello {u['full_name'] or u['username']},\n\nYour verification code is: {code}\n\n"
+                   f"It works for {OTP_TTL_MIN} minutes. Don't share it with anyone.\n")
     except Exception as exc:
-        print(f"[otp] SMS failed for user {user_id}: {exc}")
-        return False, "We couldn't send the text message. Please try again in a moment."
-    return True, f"Code sent to {mask_phone(u['phone'])}. It works for {OTP_TTL_MIN} minutes."
+        print(f"[otp] email failed for user {user_id}: {exc}")
+        return False, "We couldn't send the email. Please try again in a moment."
+    return True, f"Code sent to {mask_email(u['email'])}. It works for {OTP_TTL_MIN} minutes."
 
 
 def verify_otp(user_id, code):

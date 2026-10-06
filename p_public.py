@@ -1,4 +1,5 @@
 """Pages for visitors: rates, about us, login, sign-up, forgot password."""
+import os
 import pandas as pd
 import streamlit as st
 
@@ -324,11 +325,11 @@ def verify_phone_page(user):
     """Shown to every signed-in user until their mobile number is verified by OTP."""
     _, mid, _ = st.columns([1, 2, 1])
     with mid:
-        st.header("Verify your phone number")
+        st.header("Verify your email")
         ui.show_flash()
-        st.write(f"We'll text a 6-digit code to **{auth.mask_phone(user['phone'])}**. You must verify it before using GTD.")
-        if not sms.is_configured():
-            st.info("Text messages aren't set up on this server yet, so the code is printed in the terminal running Streamlit.")
+        st.write(f"We'll email a 6-digit code to **{auth.mask_email(user['email'])}**. You must verify it before using GTD.")
+        if not os.environ.get("GTD_SMTP_HOST"):
+            st.info("Email isn't set up on this server yet, so the code only appears in the server log.")
         if st.button("Send code", type="primary", use_container_width=True):
             ok, msg = auth.send_otp(user["id"])
             (st.success if ok else st.error)(msg)
